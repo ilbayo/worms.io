@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+pysam
+jinja2
