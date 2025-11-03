@@ -1,4 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 pysam
 jinja2
+python-multipart
