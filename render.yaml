@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: worms-io
+    env: docker
+    repo: https://github.com/ilbayo/worms.io
+    plan: starter
+    branch: main
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: REF_FASTA
+        value: /app/app/data/reference/genomic.fa
+      - key: REF_FASTA_URL
+        value: https://downloads.wormbase.org/releases/WS295/species/c_elegans/PRJEB28388/c_elegans.PRJEB28388.WS295.genomic.fa.gz
+      - key: REF_BUILD_INDICES
+        value: "1"
+      - key: TOOLS_TRIM_GALORE
+        value: trim_galore
+      - key: TOOLS_BWA
+        value: bwa
+      - key: TOOLS_SAMTOOLS
+        value: samtools
+    disk:
+      name: worms-data
+      mountPath: /app/app/data
+      sizeGB: 20
