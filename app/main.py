@@ -46,16 +46,79 @@ except ImportError:
 def index():
     return """
     <html>
-      <body>
-        <h2>WormSeq.io – upload paired-end FASTQ</h2>
-        <form action="/upload" enctype="multipart/form-data" method="post">
-          Sample name: <input type="text" name="sample" /><br><br>
-          R1 FASTQ: <input type="file" name="r1" /><br><br>
-          R2 FASTQ: <input type="file" name="r2" /><br><br>
-          <input type="submit" value="Upload & Run" />
-        </form>
-        <p>After upload you'll get a job_id. Check it at /jobs/&lt;job_id&gt;</p>
-      </body>
+    <head>
+      <title>WormSeq.io</title>
+      <style>
+        body { font-family: sans-serif; margin: 40px; }
+        #progressContainer { width: 100%; background: #ddd; border-radius: 8px; margin-top: 10px; }
+        #progressBar { width: 0%; height: 20px; background: #4CAF50; border-radius: 8px; text-align: center; color: white; }
+      </style>
+    </head>
+    <body>
+      <h2>WormSeq.io – Upload Paired-End FASTQ</h2>
+      <form id="uploadForm">
+        Sample name: <input type="text" name="sample" id="sample" required /><br><br>
+        R1 FASTQ: <input type="file" name="r1" id="r1" required /><br><br>
+        R2 FASTQ: <input type="file" name="r2" id="r2" required /><br><br>
+        <button type="submit">Upload & Run</button>
+      </form>
+
+      <div id="progressContainer">
+        <div id="progressBar">0%</div>
+      </div>
+
+      <p id="status"></p>
+
+      <script>
+        const form = document.getElementById('uploadForm');
+        const progressBar = document.getElementById('progressBar');
+        const statusText = document.getElementById('status');
+
+        form.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const sample = document.getElementById('sample').value;
+          const r1 = document.getElementById('r1').files[0];
+          const r2 = document.getElementById('r2').files[0];
+          if (!r1 || !r2) {
+            alert("Please select both FASTQ files.");
+            return;
+          }
+
+          const formData = new FormData();
+          formData.append('sample', sample);
+          formData.append('r1', r1);
+          formData.append('r2', r2);
+
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/upload', true);
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const percent = Math.round((e.loaded / e.total) * 100);
+              progressBar.style.width = percent + '%';
+              progressBar.textContent = percent + '%';
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status === 200) {
+              const result = JSON.parse(xhr.responseText);
+              progressBar.style.width = '100%';
+              progressBar.textContent = 'Done!';
+              statusText.innerHTML = `<b>Upload complete!</b><br>Job ID: ${result.job_id}<br>Status: ${result.status}<br>Check progress at: <a href="/jobs/${result.job_id}" target="_blank">/jobs/${result.job_id}</a>`;
+            } else {
+              statusText.textContent = 'Upload failed: ' + xhr.statusText;
+            }
+          };
+
+          xhr.onerror = () => {
+            statusText.textContent = 'Error: could not upload file.';
+          };
+
+          xhr.send(formData);
+        });
+      </script>
+    </body>
     </html>
     """
 
