@@ -1,5 +1,4 @@
 fastapi
-uvicorn[standard]
-pysam
-jinja2
-python-multipart
+uvicorn
+pandas
+matplotlib
