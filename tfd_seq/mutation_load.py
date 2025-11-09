@@ -1,44 +1,37 @@
-# tfd_seq/mutation_load.py
-
 import pandas as pd
-import matplotlib.pyplot as plt
-from pathlib import Path
+import io
 
-def mutation_load_sliding_window(
-    variant_file: str,
-    chrom: str,
-    start: int,
-    end: int,
-    bin_size: int = 30,
-    max_alt_freq: float = 0.35,
-    out_png: str | None = None,
-):
-    df = pd.read_csv(variant_file, sep="\t")
-    region = df[(df["Chromosome"] == chrom) & (df["Position"] >= start) & (df["Position"] <= end)]
+def load_variant_file(raw_bytes):
+    # try utf-8, fallback to latin-1
+    try:
+        text = raw_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw_bytes.decode("latin-1")
 
-    bins = []
-    scores = []
+    # auto-detect separator (tab or comma or spaces)
+    df = pd.read_csv(
+        io.StringIO(text),
+        sep=None,            # let pandas sniff
+        engine="python"      # needed for sep=None
+    )
 
-    for s in range(start, end - bin_size + 2):
-        e = s + bin_size - 1
-        subset = region[(region["Position"] >= s) & (region["Position"] <= e)]
-        subset = subset[subset["AltAlleleFreq"] <= max_alt_freq]
-        if len(subset) > 0:
-            score = len(subset) * subset["AltAlleleFreq"].mean()
-        else:
-            score = 0
-        bins.append(s)
-        scores.append(score)
+    # normalize columns
+    lower = {c.lower(): c for c in df.columns}
 
-    plt.figure(figsize=(10,4))
-    plt.plot(bins, scores)
-    plt.title(f"Mutation load {chrom}:{start}-{end}")
-    plt.xlabel("Genomic position")
-    plt.ylabel("Weighted score")
-    plt.tight_layout()
+    def pick(*cands):
+        for c in cands:
+            if c.lower() in lower:
+                return lower[c.lower()]
+        raise ValueError(f"Missing required column: one of {cands}")
 
-    if out_png:
-        plt.savefig(out_png, dpi=150)
-        print(f"[tfd-seq] Saved plot to {out_png}")
-    else:
-        plt.show()
+    chrom_col = pick("Chromosome", "chrom", "chr", "#chrom")
+    pos_col   = pick("Position", "pos", "start")
+    af_col    = pick("AltAlleleFreq", "altallelefreq", "AF", "alt_freq", "allele_freq")
+
+    df = df.rename(columns={
+        chrom_col: "Chromosome",
+        pos_col: "Position",
+        af_col: "AltAlleleFreq",
+    })
+
+    return df
